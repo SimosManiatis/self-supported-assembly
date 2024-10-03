@@ -293,6 +293,14 @@ def create_ui(window_title, yes_button_label, no_button_label, submit_button_lab
                 self.robot_name_window.close()
             event.accept()
 
+        def resizeEvent(self, event):
+            """Override the resize event to adjust button geometry on window resize."""
+            super().resizeEvent(event)
+            if self.yes_button.default_geometry:
+                self.yes_button.default_geometry = self.yes_button.geometry()
+            if self.no_button.default_geometry:
+                self.no_button.default_geometry = self.no_button.geometry()
+
     def main():
         app = QApplication(sys.argv)
         main_window = MainWindow()
@@ -317,11 +325,4 @@ if response == "Yes":
     print(f"Robot A's Name: {robot_name}")
 else:
     print("No robot registered.")
-
-
-
-
-
-
-
 
