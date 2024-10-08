@@ -3,15 +3,16 @@ import hashlib
 import os
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QGraphicsOpacityEffect,
-    QHBoxLayout, QMessageBox, QLineEdit, QListWidget, QSizePolicy, QStackedWidget
+    QHBoxLayout, QMessageBox, QLineEdit, QListWidget, QSizePolicy, QStackedWidget,
+    QFileDialog, QListWidgetItem, QFrame
 )
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont, QPixmap, QIcon
 from PyQt5.QtCore import (
-    Qt, QPropertyAnimation, QTimer, QParallelAnimationGroup, QPoint, QEasingCurve, QSequentialAnimationGroup
+    Qt, QPropertyAnimation, QTimer, QParallelAnimationGroup, QPoint, QEasingCurve, QSequentialAnimationGroup, QSize
 )
 
 # Parameters for the design and functionality
-window_title = "CORE 2024"
+window_title = "User Management"
 login_button_label = "Login"
 register_button_label = "Register"
 exit_button_label = "Exit"
@@ -34,9 +35,13 @@ text_color = "#000000"
 font_family = "Helvetica"
 startup_background_color = "#FFFFFF"
 
+# Font sizes for titles
+course_title_font_size = 24
+project_title_font_size = 16
+
 # Titles for the startup screen
 course_title = "C.O.R.E 2024"
-project_title = "Robotic assembly of rigidity-preserving structures"
+project_title = "Robotic Assembly Of Rigidity-Preserving Structures"
 
 # Ensure user database file exists
 if not os.path.exists(database_file):
@@ -46,14 +51,21 @@ if not os.path.exists(database_file):
 # List of registered robots
 registered_robots = []
 
+class Robot:
+    """Class to store robot information."""
+    def __init__(self, name, image_path):
+        self.name = name
+        self.image_path = image_path
+
 
 class PulsingButton(QPushButton):
     """A QPushButton that pulses and changes color when hovered."""
-    def __init__(self, label, color, hover_color=None, is_negative=False):
+    def __init__(self, label, color, hover_color=None, is_negative=False, hover_size_increase=False):
         super().__init__(label)
         self.default_color = color
         self.hover_color = hover_color if hover_color else color
         self.is_negative = is_negative
+        self.hover_size_increase = hover_size_increase
         self.setFixedSize(200, 50)
         self.setStyleSheet(f"""
             background-color: {color};
@@ -64,6 +76,8 @@ class PulsingButton(QPushButton):
             font-size: 14px;
         """)
         self.setFont(QFont(font_family, 12))
+        self.original_size = self.size()
+        self.hover_animation = None
 
     def enterEvent(self, event):
         self.setStyleSheet(f"""
@@ -74,6 +88,8 @@ class PulsingButton(QPushButton):
             font-family: {font_family};
             font-size: 14px;
         """)
+        if self.hover_size_increase:
+            self.start_size_animation(1.1)
         self.start_pulse()
 
     def leaveEvent(self, event):
@@ -85,6 +101,8 @@ class PulsingButton(QPushButton):
             font-family: {font_family};
             font-size: 14px;
         """)
+        if self.hover_size_increase:
+            self.start_size_animation(1.0)
         self.stop_pulse()
 
     def start_pulse(self):
@@ -108,6 +126,17 @@ class PulsingButton(QPushButton):
         opacity_effect.setOpacity(self.pulse_opacity)
         self.setGraphicsEffect(opacity_effect)
 
+    def start_size_animation(self, scale_factor):
+        new_width = self.original_size.width() * scale_factor
+        new_height = self.original_size.height() * scale_factor
+        new_size = QSize(int(new_width), int(new_height))
+
+        self.hover_animation = QPropertyAnimation(self, b"size")
+        self.hover_animation.setDuration(200)
+        self.hover_animation.setStartValue(self.size())
+        self.hover_animation.setEndValue(new_size)
+        self.hover_animation.start()
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -117,7 +146,7 @@ class MainWindow(QWidget):
     def init_ui(self):
         self.setWindowTitle(window_title)
         self.setGeometry(100, 100, window_width, window_height)
-        self.setMinimumSize(480, 270)  # Minimum size to maintain aspect ratio
+        self.setMinimumSize(800, 270)  # Minimum size to maintain aspect ratio and fit title
 
         # Set a consistent background color
         self.setStyleSheet(f"background-color: {startup_background_color};")
@@ -165,7 +194,7 @@ class MainWindow(QWidget):
 
         # Course Title Label
         self.course_title_label = QLabel(course_title)
-        self.course_title_label.setFont(QFont(font_family, 24, QFont.Bold))
+        self.course_title_label.setFont(QFont(font_family, course_title_font_size, QFont.Bold))
         self.course_title_label.setStyleSheet("color: #333333;")
         self.course_title_label.setAlignment(Qt.AlignCenter)
         self.course_title_label.setGraphicsEffect(QGraphicsOpacityEffect())
@@ -173,10 +202,10 @@ class MainWindow(QWidget):
 
         # Project Title Label
         self.project_title_label = QLabel(project_title)
-        self.project_title_label.setFont(QFont(font_family, 16))
+        self.project_title_label.setFont(QFont(font_family, project_title_font_size))
         self.project_title_label.setStyleSheet("color: #555555;")
         self.project_title_label.setAlignment(Qt.AlignCenter)
-        self.project_title_label.setWordWrap(True)
+        self.project_title_label.setWordWrap(False)
         self.project_title_label.setGraphicsEffect(QGraphicsOpacityEffect())
         self.project_title_label.graphicsEffect().setOpacity(0)
 
@@ -204,7 +233,8 @@ class MainWindow(QWidget):
         self.title_animation_group.addAnimation(self.project_title_animation)
 
         # Start button
-        self.start_button = PulsingButton("Proceed", "#E0E0E0", hover_color="#CCCCCC")
+        pale_white_blue = "#AFEEEE"
+        self.start_button = PulsingButton("Proceed", "#E0E0E0", hover_color=pale_white_blue, hover_size_increase=True)
         self.start_button.setFixedSize(100, 40)
         self.start_button.clicked.connect(self.switch_to_main_menu)
         self.start_button.setVisible(False)
@@ -229,9 +259,10 @@ class MainWindow(QWidget):
         # Add widgets to layout
         layout.addStretch()
         layout.addWidget(self.logo_label)
+        layout.addSpacing(10)
         layout.addWidget(self.course_title_label)
         layout.addWidget(self.project_title_label)
-        layout.addStretch()
+        layout.addSpacing(20)
         layout.addWidget(self.start_button, alignment=Qt.AlignCenter)
         layout.addStretch()
 
@@ -435,52 +466,149 @@ class MainWindow(QWidget):
         self.robot_name_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         main_layout.addWidget(self.robot_name_input, alignment=Qt.AlignCenter)
 
+        # Select Image Button
+        self.select_image_button = PulsingButton("Select Image", yes_button_color, hover_color=hover_yes_button_color)
+        self.select_image_button.clicked.connect(self.select_robot_image)
+        main_layout.addWidget(self.select_image_button, alignment=Qt.AlignCenter)
+
+        self.selected_image_path = None  # To store the selected image path
+
         # Submit Button
         self.robot_submit = PulsingButton("Submit", yes_button_color, hover_color=hover_yes_button_color)
         self.robot_submit.clicked.connect(self.register_robot)
         main_layout.addWidget(self.robot_submit, alignment=Qt.AlignCenter)
 
         # Back Button
-        self.back_button = PulsingButton("Back", no_button_color, hover_color=hover_pale_red, is_negative=True)
+        self.back_button = PulsingButton("Back to Menu", no_button_color, hover_color=hover_pale_red, is_negative=True)
         self.back_button.clicked.connect(self.switch_to_main_menu)
         main_layout.addWidget(self.back_button, alignment=Qt.AlignCenter)
 
+        # View Robots Button
+        self.view_robots_button = PulsingButton("View Robots", yes_button_color, hover_color=hover_yes_button_color)
+        self.view_robots_button.clicked.connect(self.switch_to_robot_list)
+        main_layout.addWidget(self.view_robots_button, alignment=Qt.AlignCenter)
+
         widget.setLayout(main_layout)
         return widget
+
+    def select_robot_image(self):
+        """Open a file dialog to select an image for the robot."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Select Robot Image", "", "Image Files (*.png *.jpg *.jpeg *.bmp)", options=options)
+        if file_name:
+            self.selected_image_path = file_name
+            QMessageBox.information(self, "Image Selected", f"Selected image: {file_name}")
 
     def create_robot_list_screen(self):
         """Create a screen to display the list of registered robots."""
         widget = QWidget()
         widget.setStyleSheet(f"background-color: {startup_background_color};")
-        main_layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
         main_layout.setAlignment(Qt.AlignCenter)
         main_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Left side: Robot List
+        left_layout = QVBoxLayout()
+        left_layout.setAlignment(Qt.AlignTop)
+        left_layout.setSpacing(10)
 
         # Registered Robots Title
         self.label = QLabel("Registered Robots")
         self.label.setFont(QFont(font_family, 18))
         self.label.setStyleSheet(f"color: {text_color};")
         self.label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(self.label)
+        left_layout.addWidget(self.label)
 
         # Robot List
         self.robot_list = QListWidget()
-        self.robot_list.setMinimumWidth(300)
+        self.robot_list.setMinimumWidth(200)
         self.robot_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        main_layout.addWidget(self.robot_list)
+        self.robot_list.itemSelectionChanged.connect(self.update_robot_preview)
+        self.robot_list.setStyleSheet("""
+            QListWidget {
+                border: none;
+                font-size: 14px;
+                font-family: Helvetica;
+            }
+            QListWidget::item {
+                padding: 10px;
+            }
+            QListWidget::item:selected {
+                background-color: #E0E0E0;
+                color: black;
+            }
+        """)
+        left_layout.addWidget(self.robot_list)
+
+        # Button Layout
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignCenter)
+
+        # Add Robot Button
+        self.add_robot_button = PulsingButton("Add Robot", yes_button_color, hover_color=hover_yes_button_color)
+        self.add_robot_button.clicked.connect(self.switch_to_robot_registration)
+        button_layout.addWidget(self.add_robot_button)
+
+        # Remove Robot Button
+        self.remove_robot_button = PulsingButton("Remove Selected Robot", no_button_color, hover_color=hover_pale_red)
+        self.remove_robot_button.clicked.connect(self.remove_selected_robot)
+        button_layout.addWidget(self.remove_robot_button)
+
+        left_layout.addLayout(button_layout)
 
         # Back Button
-        self.back_button = PulsingButton("Back", no_button_color, hover_color=hover_pale_red, is_negative=True)
+        self.back_button = PulsingButton("Back to Menu", no_button_color, hover_color=hover_pale_red, is_negative=True)
         self.back_button.clicked.connect(self.switch_to_main_menu)
-        main_layout.addWidget(self.back_button, alignment=Qt.AlignCenter)
+        left_layout.addWidget(self.back_button, alignment=Qt.AlignCenter)
 
+        # Right side: Robot Preview
+        right_layout = QVBoxLayout()
+        right_layout.setAlignment(Qt.AlignTop)
+        right_layout.setSpacing(10)
+
+        self.preview_label = QLabel("Robot Preview")
+        self.preview_label.setFont(QFont(font_family, 18))
+        self.preview_label.setStyleSheet(f"color: {text_color};")
+        self.preview_label.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(self.preview_label)
+
+        self.robot_image_label = QLabel()
+        self.robot_image_label.setFixedSize(400, 400)
+        self.robot_image_label.setAlignment(Qt.AlignCenter)
+        self.robot_image_label.setStyleSheet("border: 1px solid #ccc;")
+        right_layout.addWidget(self.robot_image_label)
+
+        # Combine left and right layouts
+        main_layout.addLayout(left_layout)
+        main_layout.addLayout(right_layout)
         widget.setLayout(main_layout)
         return widget
 
     def update_robot_list(self):
         """Update the list of registered robots."""
         self.robot_list.clear()
-        self.robot_list.addItems(registered_robots)
+        for robot in registered_robots:
+            item = QListWidgetItem(robot.name)
+            item.setData(Qt.UserRole, robot)
+            self.robot_list.addItem(item)
+
+    def update_robot_preview(self):
+        """Update the robot image preview when a robot is selected."""
+        selected_items = self.robot_list.selectedItems()
+        if selected_items:
+            robot = selected_items[0].data(Qt.UserRole)
+            if robot.image_path and os.path.exists(robot.image_path):
+                pixmap = QPixmap(robot.image_path)
+                self.robot_image_label.setPixmap(pixmap.scaled(
+                    self.robot_image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                self.robot_image_label.clear()
+                self.robot_image_label.setText("No Image Available")
+        else:
+            self.robot_image_label.clear()
+            self.robot_image_label.setText("No Robot Selected")
 
     def login_user(self):
         """Handle user login."""
@@ -542,12 +670,31 @@ class MainWindow(QWidget):
     def register_robot(self):
         """Handle robot registration."""
         robot_name = self.robot_name_input.text()
-        if robot_name:
-            registered_robots.append(robot_name)
-            QMessageBox.information(self, "Robot Registered", f"Robot '{robot_name}' registered successfully!")
-            self.switch_to_robot_list()  # Switch to the robot list screen
-        else:
+        if not robot_name:
             QMessageBox.warning(self, "Registration Failed", "Please enter a robot name.")
+            return
+        if not self.selected_image_path:
+            QMessageBox.warning(self, "Registration Failed", "Please select an image for the robot.")
+            return
+        robot = Robot(robot_name, self.selected_image_path)
+        registered_robots.append(robot)
+        QMessageBox.information(self, "Robot Registered", f"Robot '{robot_name}' registered successfully!")
+        self.robot_name_input.clear()
+        self.selected_image_path = None
+
+    def remove_selected_robot(self):
+        """Remove the selected robot from the list."""
+        selected_items = self.robot_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select a robot to remove.")
+            return
+        for item in selected_items:
+            robot = item.data(Qt.UserRole)
+            registered_robots.remove(robot)
+        self.update_robot_list()
+        self.robot_image_label.clear()
+        self.robot_image_label.setText("No Robot Selected")
+        QMessageBox.information(self, "Robot Removed", "Selected robot(s) removed successfully.")
 
     def slide_to_widget(self, next_widget_index):
         """Slide transition to the specified widget."""
@@ -612,6 +759,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
 
 
 
