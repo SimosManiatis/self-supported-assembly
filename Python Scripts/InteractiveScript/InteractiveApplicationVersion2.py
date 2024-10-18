@@ -12,15 +12,15 @@ from PyQt5.QtCore import (
 )
 
 # Parameters for the design and functionality
-window_title = "User Management"
+window_title = "CORE 2024"
 login_button_label = "Login"
 register_button_label = "Register"
 exit_button_label = "Exit"
 
 # Image path for startup logo
-logo_path = r"D:\.CORE\LocalRepo\self-supported-assembly\self-supported-assembly\SimosScripts\InteractiveScript\images\0.png"
+logo_path = r"D:\.CORE\LocalRepo\self-supported-assembly\self-supported-assembly\Python Scripts\InteractiveScript\images\0.png"
 # Database file path for storing user data
-database_file = r"D:\.CORE\LocalRepo\self-supported-assembly\self-supported-assembly\SimosScripts\InteractiveScript\users.txt"
+database_file = r"D:\.CORE\LocalRepo\self-supported-assembly\self-supported-assembly\Python Scripts\InteractiveScript\users.txt"
 
 # Aspect Ratio 16:9
 window_width = 960
